@@ -25,7 +25,10 @@ fn main_impl() -> Result<(), eframe::Error> {
     eframe::run_native(
         "ewebsocket example app",
         native_options,
-        Box::new(|_cc| Ok(Box::new(app))),
+        Box::new(|cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+            Ok(Box::new(app))
+        }),
     )
 }
 
@@ -55,7 +58,10 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|_cc| Ok(Box::new(example_app::ExampleApp::default()))),
+                Box::new(|cc| {
+                    egui_extras::install_image_loaders(&cc.egui_ctx);
+                    Ok(Box::new(example_app::ExampleApp::default()))
+                }),
             )
             .await;
 

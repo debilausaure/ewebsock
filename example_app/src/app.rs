@@ -1,8 +1,9 @@
 use eframe::egui;
-use ewebsock::{WsEvent, WsMessage, WsReceiver, WsSender};
+use ewebsock::{Options, WsEvent, WsMessage, WsReceiver, WsSender};
 
 pub struct ExampleApp {
     url: String,
+    jwt: String,
     error: String,
     frontend: Option<FrontEnd>,
 }
@@ -11,6 +12,7 @@ impl Default for ExampleApp {
     fn default() -> Self {
         Self {
             url: "ws://127.0.0.1:9001".to_owned(),
+            jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30".to_owned(),
             error: Default::default(),
             frontend: None,
         }
@@ -35,7 +37,24 @@ impl eframe::App for ExampleApp {
         egui::TopBottomPanel::top("server").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("URL:");
-                if ui.text_edit_singleline(&mut self.url).lost_focus()
+                if ui
+                    .add_sized(
+                        [120.0, ui.available_size()[1]],
+                        egui::TextEdit::singleline(&mut self.url),
+                    )
+                    .lost_focus()
+                    && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                {
+                    self.connect(ctx.clone());
+                }
+                ui.image(egui::include_image!("jwt.svg"));
+                ui.label("JWT:");
+                if ui
+                    .add_sized(
+                        ui.available_size(),
+                        egui::TextEdit::singleline(&mut self.jwt),
+                    )
+                    .lost_focus()
                     && ui.input(|i| i.key_pressed(egui::Key::Enter))
                 {
                     self.connect(ctx.clone());
@@ -61,7 +80,16 @@ impl eframe::App for ExampleApp {
 impl ExampleApp {
     fn connect(&mut self, ctx: egui::Context) {
         let wakeup = move || ctx.request_repaint(); // wake up UI thread on new message
-        match ewebsock::connect_with_wakeup(&self.url, Default::default(), wakeup) {
+        let websocket_options = Options {
+            max_incoming_frame_size: 64 * 1024 * 1024,
+            additional_headers: vec![],
+            subprotocols: vec![
+                "neuglix".to_string(),
+                format!("neuglix.auth.bearer.jwt!{}", &self.jwt).to_string(),
+            ],
+            read_timeout: Some(std::time::Duration::from_millis(10)),
+        };
+        match ewebsock::connect_with_wakeup(&self.url, websocket_options, wakeup) {
             Ok((ws_sender, ws_receiver)) => {
                 self.frontend = Some(FrontEnd::new(ws_sender, ws_receiver));
                 self.error.clear();

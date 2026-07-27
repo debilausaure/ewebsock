@@ -18,6 +18,7 @@ tokio = ["ewebsock/tokio", "dep:tokio"]
 
 [dependencies]
 ewebsock = { workspace = true, features = ["tls"] }
+egui_extras = { version = "0.31", features = ["all_loaders"]}
 
 eframe.workspace = true
 log.workspace = true
